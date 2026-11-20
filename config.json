@@ -9,10 +9,34 @@
   "max_queue": 5,
   "log_latency": true,
   "phrases": [
-    {"label": "Thanks!", "text": "Thank you so much for the follow!", "hotkey": "ctrl+alt+1"},
-    {"label": "Welcome", "text": "Welcome to the stream, everyone.", "hotkey": "ctrl+alt+2"},
-    {"label": "One sec", "text": "Give me one second, I will be right back.", "hotkey": "ctrl+alt+3"},
-    {"label": "Good game", "text": "Good game, well played everyone.", "hotkey": "ctrl+alt+4"}
+    {
+      "label": "Thanks!",
+      "text": "Thank you so much for the follow!",
+      "hotkey": "ctrl+alt+1"
+    },
+    {
+      "label": "Welcome",
+      "text": "Welcome to the stream, everyone.",
+      "hotkey": "ctrl+alt+2"
+    },
+    {
+      "label": "One sec",
+      "text": "Give me one second, I will be right back.",
+      "hotkey": "ctrl+alt+3"
+    },
+    {
+      "label": "Good game",
+      "text": "Good game, well played everyone.",
+      "hotkey": "ctrl+alt+4"
+    }
   ],
-  "stop_hotkey": "ctrl+alt+s"
+  "stop_hotkey": "ctrl+alt+s",
+  "hotkeys_enabled": true,
+  "overlay": {
+    "font_size": 44,
+    "font_family": "Comic Sans MS",
+    "color": "#001eff",
+    "outline_color": "#ffffff",
+    "position": "bottom"
+  }
 }

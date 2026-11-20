@@ -35,7 +35,7 @@ class FakeEngine:
         return np.zeros(int(self.sample_rate * 0.06 * len(text)), dtype=np.float32)
 
 
-if __name__ == "__main__":      # python -m backend.tts_engine voices/xxx.onnx "Hello there"
+if __name__ == "__main__":    
     import sys
 
     engine = PiperEngine(sys.argv[1])

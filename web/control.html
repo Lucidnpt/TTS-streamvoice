@@ -8,17 +8,19 @@
   :root {
     color-scheme: dark;
     --base: #1f2633; --panel: #283041; --line: #3a4559;
-    --text: #eef1f7; --muted: #9ba7bb; --ready: #6cc4a8; --live: #ff5c4d;
+    --text: #eef1f7; --muted: #9ba7bb; --ready: #6cc4a8; --live: #ff5c4d; --warn: #f2c14e;
     font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--base); color: var(--text); }
-  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 22px; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px 16px 48px; display: grid; gap: 18px; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   h1 { margin: 0; font-size: 20px; font-weight: 650; }
   h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--muted); }
   p { margin: 0; }
   .hint { font-size: 13px; color: var(--muted); }
+  section[data-tab] { display: grid; gap: 22px; }
+  section[data-tab][hidden] { display: none; }
 
   #status { display: flex; align-items: center; gap: 8px; font-size: 14px; }
   #dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
@@ -27,35 +29,100 @@
   @keyframes pulse { 50% { opacity: .35; } }
   @media (prefers-reduced-motion: reduce) { #dot { animation: none !important; } }
 
-  textarea, input {
-    width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line);
+  nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav button {
+    border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none;
+    color: var(--muted); padding: 10px 14px; white-space: nowrap;
+  }
+  nav button:hover { color: var(--text); border-color: transparent; }
+  nav button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--ready); }
+
+  textarea, input, select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
     background: var(--panel); color: var(--text); font: inherit;
   }
   textarea { font-size: 20px; line-height: 1.4; resize: vertical; min-height: 96px; }
-  :is(textarea, input, button):focus-visible { outline: 2px solid var(--ready); outline-offset: 2px; }
+  :is(textarea, input, select, button):focus-visible { outline: 2px solid var(--ready); outline-offset: 2px; }
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
   .row .hint { flex: 1 1 200px; }
+  .spacer { flex: 1; }
   button {
     font: inherit; font-weight: 600; padding: 10px 18px; border-radius: 8px; cursor: pointer;
     border: 1px solid var(--line); background: var(--panel); color: var(--text);
   }
   button:hover { border-color: var(--muted); }
-  #speak { background: var(--ready); border-color: var(--ready); color: #12201b; }
-  #stop { border-color: var(--live); color: var(--live); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary, #speak { background: var(--ready); border-color: var(--ready); color: #12201b; }
+  button.danger, #stop { border-color: var(--live); color: var(--live); }
+  button.small { padding: 6px 10px; font-size: 13px; }
   #now { min-height: 1.4em; margin-top: 10px; color: var(--muted); }
+  .dirty { color: var(--warn); font-size: 13px; }
+  .dirty[hidden] { display: none; }
+  .warnbox { border: 1px solid var(--warn); color: var(--warn); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  .warnbox[hidden] { display: none; }
 
   #phrases { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .phrase { display: grid; gap: 2px; text-align: left; padding: 12px 14px; }
   .phrase small { font-weight: 400; color: var(--muted); }
+
+  /* ---- editor câu nói nhanh ---- */
+  .switch { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; }
+  .switch input { width: 42px; height: 24px; appearance: none; border-radius: 12px; padding: 0; position: relative; cursor: pointer; }
+  .switch input::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--muted); transition: transform .15s;
+  }
+  .switch input:checked { background: var(--ready); border-color: var(--ready); }
+  .switch input:checked::after { transform: translateX(18px); background: #12201b; }
+  #plist { display: grid; gap: 10px; }
+  .prow {
+    display: grid; grid-template-columns: 140px 1fr 210px auto; gap: 8px; align-items: center;
+    padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: #232b3a;
+  }
+  .prow .ops { display: flex; gap: 4px; }
+  .hk { display: flex; gap: 4px; }
+  .hk input { font-family: Consolas, ui-monospace, monospace; font-size: 14px; }
+  .hk input.rec { border-color: var(--live); color: var(--live); }
+  .plabels { display: grid; grid-template-columns: 140px 1fr 210px auto; gap: 8px; padding: 0 11px; }
+  .plabels span:last-child { width: 118px; }
+  @media (max-width: 720px) {
+    .prow { grid-template-columns: 1fr; } .plabels { display: none; }
+  }
+  .field { display: grid; gap: 6px; }
+  .field > span { font-size: 13px; color: var(--muted); }
+  .stopline { display: grid; grid-template-columns: 210px 1fr; gap: 12px; align-items: end; }
+
+  /* ---- phụ đề ---- */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .sizebox { display: flex; gap: 8px; align-items: center; }
+  .sizebox input[type=range] { padding: 0; border: 0; background: none; }
+  .sizebox input[type=number] { width: 80px; }
+  .colorbox { display: flex; gap: 8px; align-items: center; }
+  .colorbox input[type=color] { width: 48px; height: 40px; padding: 2px; }
+  .seg { display: flex; gap: 0; }
+  .seg button { border-radius: 0; flex: 1; font-weight: 500; }
+  .seg button:first-child { border-radius: 8px 0 0 8px; }
+  .seg button:last-child { border-radius: 0 8px 8px 0; }
+  .seg button[aria-pressed="true"] { background: var(--ready); border-color: var(--ready); color: #12201b; }
+  .stage {
+    position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 8px; border: 1px solid var(--line);
+    background: repeating-conic-gradient(#3a4252 0% 25%, #2c3341 0% 50%) 0 0 / 32px 32px;
+  }
+  .stage-inner { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+  #pcap {
+    position: absolute; left: 50%; transform: translateX(-50%); max-width: 90%; text-align: center;
+    font-weight: 600; line-height: 1.25;
+  }
 
   #gate { position: fixed; inset: 0; background: var(--base); display: grid; place-content: center; gap: 12px; padding: 24px; }
   #gate[hidden], #toast[hidden] { display: none; }
   #gate h2 { color: var(--text); font-size: 18px; margin: 0; }
   #gateerr { color: var(--live); min-height: 1.3em; }
   #toast {
-    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: 90vw; z-index: 10;
     background: var(--panel); border: 1px solid var(--live); border-radius: 8px; padding: 10px 16px;
   }
+  #toast.ok { border-color: var(--ready); }
 </style>
 </head>
 <body data-state="offline">
@@ -65,28 +132,107 @@
     <div id="status"><span id="dot"></span><span id="label">Mất kết nối</span><span id="pending" class="hint"></span></div>
   </header>
 
-  <section>
-    <textarea id="text" rows="3" placeholder="Gõ nội dung rồi nhấn Enter để nói" autofocus></textarea>
+  <nav role="tablist">
+    <button role="tab" data-for="control">Điều khiển</button>
+    <button role="tab" data-for="phrases-tab">Câu nói nhanh &amp; Hotkey</button>
+    <button role="tab" data-for="caption-tab">Phụ đề</button>
+    <button role="tab" data-for="obs-tab">OBS</button>
+  </nav>
+
+  <!-- ============ ĐIỀU KHIỂN ============ -->
+  <section data-tab="control">
+    <div>
+      <textarea id="text" rows="3" placeholder="Gõ nội dung rồi nhấn Enter để nói" autofocus></textarea>
+      <div class="row">
+        <button id="speak">Nói</button>
+        <button id="stop">Dừng</button>
+        <span class="hint">Enter để nói, Shift+Enter xuống dòng, Esc để dừng.</span>
+      </div>
+      <p id="now" aria-live="polite"></p>
+    </div>
+    <div>
+      <h2>Câu nói nhanh</h2>
+      <div id="phrases"></div>
+    </div>
+  </section>
+
+  <!-- ============ CÂU NÓI NHANH & HOTKEY ============ -->
+  <section data-tab="phrases-tab" hidden>
+    <div class="warnbox" id="hkunavail" hidden>Không dùng được phím tắt toàn cục trên máy này (thiếu thư viện <code>keyboard</code> hoặc không có quyền). Các câu nói nhanh vẫn dùng được bằng nút bấm.</div>
+    <label class="switch"><input type="checkbox" id="hkenabled"> Bật phím tắt toàn cục (hoạt động cả khi đang ở trong game)</label>
+
+    <div class="stopline">
+      <label class="field"><span>Phím tắt Dừng</span>
+        <div class="hk"><input id="stophk" placeholder="(không có)" spellcheck="false"><button class="small" data-rec="stophk">Ghi phím</button></div>
+      </label>
+      <p class="hint">Bấm "Ghi phím" rồi nhấn tổ hợp (vd. Ctrl+Alt+1). Esc để hủy ghi, Backspace để xóa phím. Nên dùng tổ hợp có Ctrl/Alt để không trùng khi gõ chữ.</p>
+    </div>
+
+    <div>
+      <div class="plabels hint"><span>Nhãn nút</span><span>Nội dung sẽ nói</span><span>Phím tắt</span><span></span></div>
+      <div id="plist"></div>
+      <div class="row"><button id="padd">+ Thêm câu</button></div>
+    </div>
+
     <div class="row">
-      <button id="speak">Nói</button>
-      <button id="stop">Dừng</button>
-      <span class="hint">Enter để nói, Shift+Enter xuống dòng, Esc để dừng.</span>
+      <button id="preset" class="danger">Khôi phục mặc định</button>
+      <span class="spacer"></span>
+      <span class="dirty" id="pdirty" hidden>Có thay đổi chưa lưu</span>
+      <button id="pcancel">Hủy thay đổi</button>
+      <button id="psave" class="primary">Lưu</button>
     </div>
-    <p id="now" aria-live="polite"></p>
   </section>
 
-  <section>
-    <h2>Câu nói nhanh</h2>
-    <div id="phrases"></div>
+  <!-- ============ PHỤ ĐỀ ============ -->
+  <section data-tab="caption-tab" hidden>
+    <div class="grid2">
+      <label class="field"><span>Cỡ chữ (px, trên khung 1920×1080)</span>
+        <div class="sizebox"><input type="range" id="osize" min="12" max="200"><input type="number" id="osizen" min="12" max="200"></div>
+      </label>
+      <label class="field"><span>Font chữ</span>
+        <select id="ofont"></select>
+        <input id="ofontc" placeholder="Tên font đã cài trên máy" hidden spellcheck="false">
+      </label>
+      <label class="field"><span>Màu chữ</span>
+        <div class="colorbox"><input type="color" id="ocolor"><input id="ocolort" maxlength="7" spellcheck="false"></div>
+      </label>
+      <label class="field"><span>Màu viền</span>
+        <div class="colorbox"><input type="color" id="ooutline"><input id="ooutlinet" maxlength="7" spellcheck="false"></div>
+      </label>
+      <div class="field"><span>Vị trí</span>
+        <div class="seg" id="opos"><button data-pos="top">Trên</button><button data-pos="bottom">Dưới</button></div>
+      </div>
+    </div>
+    <div class="field"><span>Xem trước</span>
+      <div class="stage" id="stage"><div class="stage-inner" id="stagein"><div id="pcap">Hello everyone, welcome to the stream!</div></div></div>
+    </div>
+    <div class="row">
+      <button id="oreset" class="danger">Mặc định</button>
+      <span class="spacer"></span>
+      <span class="dirty" id="odirty" hidden>Có thay đổi chưa lưu</span>
+      <button id="ocancel">Hủy thay đổi</button>
+      <button id="osave" class="primary">Lưu</button>
+    </div>
+    <p class="hint">Sau khi lưu, overlay đang mở trong OBS tự cập nhật, không cần tải lại.</p>
   </section>
 
-  <section>
-    <h2>Phụ đề cho OBS</h2>
-    <div class="row" style="margin-top:0">
-      <input id="ovurl" readonly aria-label="Địa chỉ overlay" style="flex:1 1 260px; width:auto">
-      <button id="copy">Sao chép</button>
+  <!-- ============ OBS ============ -->
+  <section data-tab="obs-tab" hidden>
+    <div>
+      <h2>Địa chỉ overlay phụ đề</h2>
+      <div class="row" style="margin-top:0">
+        <input id="ovurl" readonly aria-label="Địa chỉ overlay" style="flex:1 1 260px; width:auto">
+        <button id="copy">Sao chép</button>
+        <button id="openov">Mở thử</button>
+      </div>
     </div>
-    <p class="hint" style="margin-top:8px">Trong OBS: thêm nguồn Browser, dán địa chỉ này, đặt kích thước 1920×1080. Nếu OBS chạy cùng máy, dùng 127.0.0.1 thay cho địa chỉ IP.</p>
+    <div class="hint" style="display:grid; gap:6px; font-size:14px">
+      <p>1. Trong OBS: Sources → <b>+</b> → <b>Browser</b>.</p>
+      <p>2. Dán địa chỉ trên vào ô URL, đặt Width 1920, Height 1080.</p>
+      <p>3. Nếu OBS chạy trên máy khác, thay 127.0.0.1 bằng địa chỉ IP của máy này (cần đặt "host": "0.0.0.0" trong config.json).</p>
+      <p>Tham số nâng cao trên URL: <code>?hold=1000</code> (ms giữ phụ đề sau khi nói xong), <code>&amp;delay=200</code> (ms, nếu phụ đề hiện sớm hơn tiếng).</p>
+      <p>Âm thanh: trong OBS thêm nguồn <b>Audio Input Capture</b> chọn thiết bị <b>CABLE Output</b>.</p>
+    </div>
   </section>
 </main>
 
@@ -100,6 +246,8 @@
 
 <script>
   const $ = s => document.querySelector(s);
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   let ws, authFailed = false;
   const store = {
     get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
@@ -107,14 +255,28 @@
     del: k => { try { localStorage.removeItem(k); } catch {} },
   };
   let pin = store.get('sv_pin');
+  // App desktop mở trang với #pin=... để khỏi phải nhập PIN.
+  const hashPin = new URLSearchParams(location.hash.slice(1)).get('pin');
+  if (hashPin) { pin = hashPin; history.replaceState(null, '', location.pathname + location.search); }
 
-  function toast(msg) {
+  function toast(msg, ok = false) {
     const t = $('#toast');
-    t.textContent = msg; t.hidden = false;
+    t.textContent = msg; t.hidden = false; t.classList.toggle('ok', ok);
     clearTimeout(toast.id);
-    toast.id = setTimeout(() => { t.hidden = true; }, 3500);
+    toast.id = setTimeout(() => { t.hidden = true; }, 4000);
   }
 
+  // ---------------- tab ----------------
+  function showTab(id) {
+    document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-selected', b.dataset.for === id));
+    document.querySelectorAll('section[data-tab]').forEach(s => { s.hidden = s.dataset.tab !== id; });
+    store.set('sv_tab', id);
+    if (id === 'caption-tab') fitStage();
+  }
+  document.querySelectorAll('nav button').forEach(b => b.onclick = () => showTab(b.dataset.for));
+  showTab(document.querySelector(`section[data-tab="${store.get('sv_tab')}"]`) ? store.get('sv_tab') : 'control');
+
+  // ---------------- điều khiển (WebSocket) ----------------
   function setState(state, pending = 0) {
     document.body.dataset.state = state;
     $('#label').textContent = { offline: 'Mất kết nối', idle: 'Sẵn sàng', speaking: 'Đang nói' }[state];
@@ -131,7 +293,8 @@
   function renderPhrases(list) {
     const box = $('#phrases');
     box.replaceChildren();
-    if (!list.length) { box.textContent = 'Chưa có câu nào. Thêm vào mục "phrases" trong config.json.'; return; }
+    if (!list.length) { box.textContent = 'Chưa có câu nào. Thêm ở tab "Câu nói nhanh & Hotkey".'; box.className = 'hint'; return; }
+    box.className = '';
     for (const p of list) {
       const b = document.createElement('button');
       b.className = 'phrase';
@@ -139,18 +302,21 @@
       name.textContent = p.label || p.text;
       b.append(name);
       if (p.hotkey) { const h = document.createElement('small'); h.textContent = p.hotkey; b.append(h); }
+      b.title = p.text;
       b.onclick = () => send({ type: 'speak', text: p.text });
       box.append(b);
     }
   }
 
   function handle(m) {
-    if (m.type === 'ready') { $('#gate').hidden = true; store.set('sv_pin', pin); renderPhrases(m.phrases); }
+    if (m.type === 'ready') { $('#gate').hidden = true; store.set('sv_pin', pin); renderPhrases(m.phrases); loadSettings(); }
     else if (m.type === 'status') { setState(m.state, m.pending); if (m.state === 'idle') $('#now').textContent = ''; }
     else if (m.type === 'caption') $('#now').textContent = 'Đang nói: ' + m.text;
     else if (m.type === 'caption_clear') $('#now').textContent = '';
     else if (m.type === 'error') toast(m.message);
     else if (m.type === 'auth_failed') { authFailed = true; store.del('sv_pin'); pin = ''; showGate('Mã PIN không đúng.'); }
+    else if (m.type === 'phrases') { renderPhrases(m.phrases); loadSettings(); }
+    else if (m.type === 'overlay_style') { /* cập nhật qua loadSettings khi lưu */ }
   }
 
   function connect() {
@@ -175,13 +341,244 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') send({ type: 'stop' }); });
   $('#connect').onclick = () => { pin = $('#pin').value.trim(); if (pin) { ws && ws.close(); connect(); } };
   $('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('#connect').click(); });
-  $('#copy').onclick = async () => {
-    const el = $('#ovurl'); el.select();
-    try { await navigator.clipboard.writeText(el.value); } catch { document.execCommand('copy'); }
-    toast('Đã sao chép địa chỉ.');
+
+  // ---------------- API cài đặt ----------------
+  let saved = null, defaults = null, pdraft = null, odraft = null;
+
+  async function api(method, path, body) {
+    const r = await fetch(path, {
+      method, headers: { 'Content-Type': 'application/json', 'X-Pin': pin },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      const d = data.detail;
+      const msg = Array.isArray(d) ? d.map(x => `${x.loc.slice(1).join(' › ')}: ${x.msg}`).join('; ') : (d || `Lỗi ${r.status}`);
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  const phrasePart = () => ({ phrases: saved.phrases, stop_hotkey: saved.stop_hotkey, hotkeys_enabled: saved.hotkeys_enabled });
+  const pdirty = () => !same(pdraft, phrasePart());
+  const odirty = () => !same(odraft, saved.overlay);
+
+  async function loadSettings() {
+    try {
+      const s = await api('GET', '/api/settings');
+      const keepP = saved && pdirty(), keepO = saved && odirty();
+      saved = { phrases: s.phrases, stop_hotkey: s.stop_hotkey, hotkeys_enabled: s.hotkeys_enabled, overlay: s.overlay };
+      defaults = s.defaults;
+      $('#hkunavail').hidden = s.hotkeys_available;
+      if (!keepP) { pdraft = clone(phrasePart()); renderEditor(); }
+      if (!keepO) { odraft = clone(saved.overlay); renderOverlayForm(); }
+      updateDirty();
+    } catch (e) { toast('Không tải được cài đặt: ' + e.message); }
+  }
+
+  async function saveSettings(body, okMsg) {
+    try {
+      const r = await api('PUT', '/api/settings', body);
+      saved = { phrases: r.phrases, stop_hotkey: r.stop_hotkey, hotkeys_enabled: r.hotkeys_enabled, overlay: r.overlay };
+      return r;
+    } catch (e) { toast(e.message); return null; }
+  }
+
+  function updateDirty() {
+    if (!saved) return;
+    $('#pdirty').hidden = !pdirty();
+    $('#odirty').hidden = !odirty();
+  }
+
+  // ---------------- editor câu nói nhanh ----------------
+  function el(tag, props = {}, ...kids) {
+    const e = Object.assign(document.createElement(tag), props);
+    e.append(...kids);
+    return e;
+  }
+
+  function renderEditor() {
+    $('#hkenabled').checked = pdraft.hotkeys_enabled;
+    $('#stophk').value = pdraft.stop_hotkey;
+    const list = $('#plist');
+    list.replaceChildren();
+    if (!pdraft.phrases.length) list.append(el('p', { className: 'hint', textContent: 'Chưa có câu nào. Bấm "+ Thêm câu".' }));
+    pdraft.phrases.forEach((p, i) => {
+      const label = el('input', { value: p.label, placeholder: 'Nhãn', maxLength: 60 });
+      label.oninput = () => { p.label = label.value; updateDirty(); };
+      const text = el('input', { value: p.text, placeholder: 'Nội dung sẽ nói', maxLength: 400 });
+      text.oninput = () => { p.text = text.value; updateDirty(); };
+      const hk = el('input', { value: p.hotkey, placeholder: '(không có)', spellcheck: false });
+      hk.oninput = () => { p.hotkey = hk.value; updateDirty(); };
+      const rec = el('button', { className: 'small', textContent: 'Ghi phím', type: 'button' });
+      rec.onclick = () => startRecord(hk, v => { p.hotkey = v; updateDirty(); });
+      const btn = (t, title, fn, dis) => { const b = el('button', { className: 'small', textContent: t, title, type: 'button', disabled: !!dis }); b.onclick = fn; return b; };
+      const move = d => { const a = pdraft.phrases; [a[i], a[i + d]] = [a[i + d], a[i]]; renderEditor(); updateDirty(); };
+      list.append(el('div', { className: 'prow' }, label, text,
+        el('div', { className: 'hk' }, hk, rec),
+        el('div', { className: 'ops' },
+          btn('↑', 'Lên', () => move(-1), i === 0),
+          btn('↓', 'Xuống', () => move(1), i === pdraft.phrases.length - 1),
+          btn('✕', 'Xóa', () => { pdraft.phrases.splice(i, 1); renderEditor(); updateDirty(); }))));
+    });
+  }
+
+  $('#hkenabled').onchange = e => { pdraft.hotkeys_enabled = e.target.checked; updateDirty(); };
+  $('#stophk').oninput = e => { pdraft.stop_hotkey = e.target.value; updateDirty(); };
+  document.querySelector('[data-rec="stophk"]').onclick = e => {
+    e.preventDefault();
+    startRecord($('#stophk'), v => { pdraft.stop_hotkey = v; updateDirty(); });
+  };
+  $('#padd').onclick = () => {
+    pdraft.phrases.push({ label: '', text: '', hotkey: '' });
+    renderEditor(); updateDirty();
+    $('#plist .prow:last-child input').focus();
+  };
+  $('#preset').onclick = () => {
+    if (!confirm('Thay toàn bộ câu nói nhanh và phím tắt bằng bộ mặc định? (Chưa lưu cho tới khi bấm Lưu)')) return;
+    pdraft.phrases = clone(defaults.phrases);
+    pdraft.stop_hotkey = defaults.stop_hotkey;
+    pdraft.hotkeys_enabled = true;
+    renderEditor(); updateDirty();
+  };
+  $('#pcancel').onclick = () => { pdraft = clone(phrasePart()); renderEditor(); updateDirty(); };
+  $('#psave').onclick = async () => {
+    const r = await saveSettings({ ...pdraft, overlay: saved.overlay });
+    if (!r) return;
+    pdraft = clone(phrasePart()); renderEditor(); updateDirty();
+    if (r.warnings && r.warnings.length) toast('Đã lưu, nhưng một số phím tắt không đăng ký được: ' + r.warnings.join('; '));
+    else toast('Đã lưu câu nói nhanh và phím tắt.', true);
   };
 
+  // ---- ghi phím tắt: chuyển sự kiện bàn phím sang tên phím của thư viện `keyboard` ----
+  let recording = null;
+  const MODS = { Control: 'ctrl', Alt: 'alt', Shift: 'shift', Meta: 'windows', AltGraph: 'alt gr' };
+  const KEYNAMES = {
+    ' ': 'space', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+    PageUp: 'page up', PageDown: 'page down', Insert: 'insert', Home: 'home', End: 'end',
+    Enter: 'enter', Tab: 'tab', Pause: 'pause', PrintScreen: 'print screen', CapsLock: 'caps lock',
+  };
+  function keyName(e) {
+    if (/^Key[A-Z]$/.test(e.code)) return e.code.slice(3).toLowerCase();
+    if (/^Digit\d$/.test(e.code)) return e.code.slice(5);
+    if (/^Numpad\d$/.test(e.code)) return e.code.slice(6);
+    if (/^F\d{1,2}$/.test(e.key)) return e.key.toLowerCase();
+    if (KEYNAMES[e.key]) return KEYNAMES[e.key];
+    return e.key.length === 1 ? e.key.toLowerCase() : null;
+  }
+  function startRecord(input, commit) {
+    stopRecord(false);
+    recording = { input, commit, prev: input.value };
+    input.classList.add('rec');
+    input.value = 'Nhấn tổ hợp phím…';
+  }
+  function stopRecord(apply, value) {
+    if (!recording) return;
+    const { input, commit, prev } = recording;
+    recording = null;
+    input.classList.remove('rec');
+    input.value = apply ? value : prev;
+    if (apply) commit(value);
+  }
+  window.addEventListener('keydown', e => {
+    if (!recording) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (e.key === 'Escape') return stopRecord(false);
+    if ((e.key === 'Backspace' || e.key === 'Delete') && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) return stopRecord(true, '');
+    const mods = [e.ctrlKey && 'ctrl', e.altKey && 'alt', e.shiftKey && 'shift', e.metaKey && 'windows'].filter(Boolean);
+    if (MODS[e.key]) { recording.input.value = mods.join('+') + '+…'; return; }
+    const k = keyName(e);
+    if (!k) return;
+    stopRecord(true, [...mods, k].join('+'));
+  }, true);
+  window.addEventListener('mousedown', e => { if (recording && e.target !== recording.input && !e.target.closest('.hk')) stopRecord(false); }, true);
+
+  // ---------------- phụ đề ----------------
+  const FONTS = ['Segoe UI', 'Arial', 'Tahoma', 'Verdana', 'Calibri', 'Trebuchet MS', 'Roboto',
+                 'Bahnschrift', 'Impact', 'Comic Sans MS', 'Georgia', 'Times New Roman', 'Consolas'];
+  const CUSTOM = '__custom__';
+  $('#ofont').append(...FONTS.map(f => el('option', { value: f, textContent: f, style: `font-family:"${f}"` })),
+                     el('option', { value: CUSTOM, textContent: 'Font khác…' }));
+
+  function renderOverlayForm() {
+    const o = odraft;
+    $('#osize').value = $('#osizen').value = o.font_size;
+    const known = FONTS.includes(o.font_family);
+    $('#ofont').value = known ? o.font_family : CUSTOM;
+    $('#ofontc').hidden = known;
+    if (!known) $('#ofontc').value = o.font_family;
+    $('#ocolor').value = $('#ocolort').value = o.color;
+    $('#ooutline').value = $('#ooutlinet').value = o.outline_color;
+    document.querySelectorAll('#opos button').forEach(b => b.setAttribute('aria-pressed', b.dataset.pos === o.position));
+    renderPreview();
+  }
+
+  function renderPreview() {
+    const o = odraft, c = $('#pcap');
+    c.style.fontSize = o.font_size + 'px';
+    c.style.fontFamily = `${JSON.stringify(o.font_family)}, system-ui, sans-serif`;
+    c.style.color = o.color;
+    const x = o.outline_color;
+    c.style.textShadow = `0 0 6px ${x}, 0 2px 4px ${x}, 2px 0 0 ${x}, -2px 0 0 ${x}, 0 -2px 0 ${x}`;
+    c.style.top = o.position === 'top' ? '65px' : 'auto';
+    c.style.bottom = o.position === 'top' ? 'auto' : '65px';
+    updateDirty();
+  }
+
+  function fitStage() {
+    const w = $('#stage').clientWidth;
+    if (w) $('#stagein').style.transform = `scale(${w / 1920})`;
+  }
+  new ResizeObserver(fitStage).observe($('#stage'));
+
+  const setSize = v => { v = Math.max(12, Math.min(200, Math.round(Number(v) || 44))); odraft.font_size = v; $('#osize').value = $('#osizen').value = v; renderPreview(); };
+  $('#osize').oninput = e => setSize(e.target.value);
+  $('#osizen').onchange = e => setSize(e.target.value);
+  $('#ofont').onchange = e => {
+    const custom = e.target.value === CUSTOM;
+    $('#ofontc').hidden = !custom;
+    if (custom) { $('#ofontc').focus(); odraft.font_family = $('#ofontc').value.trim() || odraft.font_family; }
+    else odraft.font_family = e.target.value;
+    renderPreview();
+  };
+  $('#ofontc').oninput = e => { if (e.target.value.trim()) { odraft.font_family = e.target.value.trim(); renderPreview(); } };
+  function bindColor(picker, text, key) {
+    $(picker).oninput = e => { odraft[key] = e.target.value; $(text).value = e.target.value; renderPreview(); };
+    $(text).oninput = e => {
+      let v = e.target.value.trim(); if (v && v[0] !== '#') v = '#' + v;
+      if (/^#[0-9a-f]{6}$/i.test(v)) { odraft[key] = v.toLowerCase(); $(picker).value = odraft[key]; renderPreview(); }
+    };
+  }
+  bindColor('#ocolor', '#ocolort', 'color');
+  bindColor('#ooutline', '#ooutlinet', 'outline_color');
+  document.querySelectorAll('#opos button').forEach(b => b.onclick = () => {
+    odraft.position = b.dataset.pos;
+    document.querySelectorAll('#opos button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    renderPreview();
+  });
+  $('#oreset').onclick = () => { odraft = clone(defaults.overlay); renderOverlayForm(); };
+  $('#ocancel').onclick = () => { odraft = clone(saved.overlay); renderOverlayForm(); };
+  $('#osave').onclick = async () => {
+    const r = await saveSettings({ ...phrasePart(), overlay: odraft });
+    if (!r) return;
+    odraft = clone(saved.overlay); renderOverlayForm();
+    toast('Đã lưu kiểu phụ đề.', true);
+  };
+
+  // ---------------- OBS ----------------
   $('#ovurl').value = location.origin + '/overlay';
+  $('#copy').onclick = async () => {
+    const elx = $('#ovurl'); elx.select();
+    try { await navigator.clipboard.writeText(elx.value); } catch { document.execCommand('copy'); }
+    toast('Đã sao chép địa chỉ.', true);
+  };
+  $('#openov').onclick = () => {
+    const url = location.origin + '/overlay?demo=1';
+    // Trong app desktop (pywebview) mở bằng trình duyệt mặc định; trên web mở tab mới.
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.open_url) window.pywebview.api.open_url(url);
+    else window.open(url, '_blank');
+  };
+
   connect();
 </script>
 </body>
