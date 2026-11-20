@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+
+voices/*.onnx
+voices/*.onnx.json
+dataset/
+dataset_test/
+*.zip
+*.wav
+logs/
+
+.vscode/
+Thumbs.db

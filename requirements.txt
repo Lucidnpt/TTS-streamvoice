@@ -1,0 +1,6 @@
+piper-tts
+sounddevice
+numpy
+fastapi
+uvicorn[standard]
+keyboard

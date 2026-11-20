@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StreamVoice</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --base: #1f2633; --panel: #283041; --line: #3a4559;
+    --text: #eef1f7; --muted: #9ba7bb; --ready: #6cc4a8; --live: #ff5c4d;
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--base); color: var(--text); }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 22px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  h1 { margin: 0; font-size: 20px; font-weight: 650; }
+  h2 { margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--muted); }
+  p { margin: 0; }
+  .hint { font-size: 13px; color: var(--muted); }
+
+  #status { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  #dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  body[data-state="idle"] #dot { background: var(--ready); }
+  body[data-state="speaking"] #dot { background: var(--live); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { #dot { animation: none !important; } }
+
+  textarea, input {
+    width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); font: inherit;
+  }
+  textarea { font-size: 20px; line-height: 1.4; resize: vertical; min-height: 96px; }
+  :is(textarea, input, button):focus-visible { outline: 2px solid var(--ready); outline-offset: 2px; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .row .hint { flex: 1 1 200px; }
+  button {
+    font: inherit; font-weight: 600; padding: 10px 18px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--panel); color: var(--text);
+  }
+  button:hover { border-color: var(--muted); }
+  #speak { background: var(--ready); border-color: var(--ready); color: #12201b; }
+  #stop { border-color: var(--live); color: var(--live); }
+  #now { min-height: 1.4em; margin-top: 10px; color: var(--muted); }
+
+  #phrases { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .phrase { display: grid; gap: 2px; text-align: left; padding: 12px 14px; }
+  .phrase small { font-weight: 400; color: var(--muted); }
+
+  #gate { position: fixed; inset: 0; background: var(--base); display: grid; place-content: center; gap: 12px; padding: 24px; }
+  #gate[hidden], #toast[hidden] { display: none; }
+  #gate h2 { color: var(--text); font-size: 18px; margin: 0; }
+  #gateerr { color: var(--live); min-height: 1.3em; }
+  #toast {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%);
+    background: var(--panel); border: 1px solid var(--live); border-radius: 8px; padding: 10px 16px;
+  }
+</style>
+</head>
+<body data-state="offline">
+<main>
+  <header>
+    <h1>StreamVoice</h1>
+    <div id="status"><span id="dot"></span><span id="label">Mất kết nối</span><span id="pending" class="hint"></span></div>
+  </header>
+
+  <section>
+    <textarea id="text" rows="3" placeholder="Gõ nội dung rồi nhấn Enter để nói" autofocus></textarea>
+    <div class="row">
+      <button id="speak">Nói</button>
+      <button id="stop">Dừng</button>
+      <span class="hint">Enter để nói, Shift+Enter xuống dòng, Esc để dừng.</span>
+    </div>
+    <p id="now" aria-live="polite"></p>
+  </section>
+
+  <section>
+    <h2>Câu nói nhanh</h2>
+    <div id="phrases"></div>
+  </section>
+
+  <section>
+    <h2>Phụ đề cho OBS</h2>
+    <div class="row" style="margin-top:0">
+      <input id="ovurl" readonly aria-label="Địa chỉ overlay" style="flex:1 1 260px; width:auto">
+      <button id="copy">Sao chép</button>
+    </div>
+    <p class="hint" style="margin-top:8px">Trong OBS: thêm nguồn Browser, dán địa chỉ này, đặt kích thước 1920×1080. Nếu OBS chạy cùng máy, dùng 127.0.0.1 thay cho địa chỉ IP.</p>
+  </section>
+</main>
+
+<div id="gate" hidden>
+  <h2>Nhập mã PIN để điều khiển</h2>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="off" aria-label="Mã PIN">
+  <button id="connect">Kết nối</button>
+  <p id="gateerr"></p>
+</div>
+<p id="toast" role="status" hidden></p>
+
+<script>
+  const $ = s => document.querySelector(s);
+  let ws, authFailed = false;
+  const store = {
+    get: k => { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+    del: k => { try { localStorage.removeItem(k); } catch {} },
+  };
+  let pin = store.get('sv_pin');
+
+  function toast(msg) {
+    const t = $('#toast');
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toast.id);
+    toast.id = setTimeout(() => { t.hidden = true; }, 3500);
+  }
+
+  function setState(state, pending = 0) {
+    document.body.dataset.state = state;
+    $('#label').textContent = { offline: 'Mất kết nối', idle: 'Sẵn sàng', speaking: 'Đang nói' }[state];
+    $('#pending').textContent = state === 'speaking' && pending > 1 ? `Hàng đợi: ${pending - 1}` : '';
+  }
+
+  function showGate(err = '') { $('#gate').hidden = false; $('#gateerr').textContent = err; $('#pin').focus(); }
+
+  function send(m) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(m));
+    else toast('Chưa kết nối tới StreamVoice.');
+  }
+
+  function renderPhrases(list) {
+    const box = $('#phrases');
+    box.replaceChildren();
+    if (!list.length) { box.textContent = 'Chưa có câu nào. Thêm vào mục "phrases" trong config.json.'; return; }
+    for (const p of list) {
+      const b = document.createElement('button');
+      b.className = 'phrase';
+      const name = document.createElement('span');
+      name.textContent = p.label || p.text;
+      b.append(name);
+      if (p.hotkey) { const h = document.createElement('small'); h.textContent = p.hotkey; b.append(h); }
+      b.onclick = () => send({ type: 'speak', text: p.text });
+      box.append(b);
+    }
+  }
+
+  function handle(m) {
+    if (m.type === 'ready') { $('#gate').hidden = true; store.set('sv_pin', pin); renderPhrases(m.phrases); }
+    else if (m.type === 'status') { setState(m.state, m.pending); if (m.state === 'idle') $('#now').textContent = ''; }
+    else if (m.type === 'caption') $('#now').textContent = 'Đang nói: ' + m.text;
+    else if (m.type === 'caption_clear') $('#now').textContent = '';
+    else if (m.type === 'error') toast(m.message);
+    else if (m.type === 'auth_failed') { authFailed = true; store.del('sv_pin'); pin = ''; showGate('Mã PIN không đúng.'); }
+  }
+
+  function connect() {
+    if (!pin) return showGate();
+    authFailed = false;
+    ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/control`);
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', pin }));
+    ws.onmessage = e => handle(JSON.parse(e.data));
+    ws.onclose = () => { setState('offline'); if (!authFailed) setTimeout(connect, 1500); };
+  }
+
+  function speak() {
+    const box = $('#text'), text = box.value.trim();
+    if (!text) return;
+    send({ type: 'speak', text });
+    box.value = '';
+  }
+
+  $('#speak').onclick = speak;
+  $('#stop').onclick = () => send({ type: 'stop' });
+  $('#text').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); speak(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') send({ type: 'stop' }); });
+  $('#connect').onclick = () => { pin = $('#pin').value.trim(); if (pin) { ws && ws.close(); connect(); } };
+  $('#pin').addEventListener('keydown', e => { if (e.key === 'Enter') $('#connect').click(); });
+  $('#copy').onclick = async () => {
+    const el = $('#ovurl'); el.select();
+    try { await navigator.clipboard.writeText(el.value); } catch { document.execCommand('copy'); }
+    toast('Đã sao chép địa chỉ.');
+  };
+
+  $('#ovurl').value = location.origin + '/overlay';
+  connect();
+</script>
+</body>
+</html>
